@@ -1,0 +1,13 @@
+# Terraform local state and cache
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/*.tfstate
+terraform/*.tfstate.*
+
+# Sensitive artifacts
+artifacts/*
+!artifacts/.gitkeep
+
+# macOS
+.DS_Store

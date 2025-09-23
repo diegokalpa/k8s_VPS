@@ -1,0 +1,140 @@
+name: infra
+
+on:
+  push:
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/infra.yaml'
+  pull_request:
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/infra.yaml'
+  workflow_dispatch:
+    inputs:
+      flux_bootstrap:
+        description: 'Ejecutar flux bootstrap (true/false)'
+        required: false
+        default: 'false'
+      flux_owner:
+        description: 'GitHub owner para Flux'
+        required: false
+      flux_repo:
+        description: 'Repositorio GitOps'
+        required: false
+      flux_branch:
+        description: 'Rama GitOps'
+        required: false
+        default: 'main'
+
+env:
+  TF_VAR_ssh_host: "72.60.140.107"
+  TF_VAR_ssh_user: "root"
+  TF_VAR_k3s_version: "v1.29.6+k3s1"
+
+jobs:
+  plan:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
+
+      - name: Preparar credenciales SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+        run: |
+          if [ -n "$SSH_PRIVATE_KEY" ]; then
+            echo "Se usará clave privada para plan"
+            echo "TF_VAR_ssh_private_key=$SSH_PRIVATE_KEY" >> $GITHUB_ENV
+          elif [ -n "$SSH_PASSWORD" ]; then
+            echo "Se usará contraseña para plan"
+            echo "TF_VAR_ssh_password=$SSH_PASSWORD" >> $GITHUB_ENV
+          else
+            echo "Define el secreto SSH_PRIVATE_KEY o SSH_PASSWORD para permitir terraform plan" >&2
+            exit 1
+          fi
+
+      - name: Terraform fmt
+        run: terraform fmt -check
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        run: terraform plan -out=tfplan
+
+  apply:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
+
+      - name: Preparar credenciales SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+        run: |
+          if [ -n "$SSH_PRIVATE_KEY" ]; then
+            mkdir -p ~/.ssh
+            echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa_hostinger
+            chmod 600 ~/.ssh/id_rsa_hostinger
+            echo "TF_VAR_ssh_private_key_path=$HOME/.ssh/id_rsa_hostinger" >> $GITHUB_ENV
+          elif [ -n "$SSH_PASSWORD" ]; then
+            echo "TF_VAR_ssh_password=$SSH_PASSWORD" >> $GITHUB_ENV
+            echo "Se utilizará contraseña SSH; instalando sshpass" >> $GITHUB_ENV
+          else
+            echo "Debes definir el secreto SSH_PRIVATE_KEY o SSH_PASSWORD" >&2
+            exit 1
+          fi
+
+      - name: Instalar sshpass si aplica
+        if: env.SSH_PASSWORD != ''
+        env:
+          SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y sshpass
+
+      - name: Configurar variables Flux
+        run: |
+          if [ "${{ github.event.inputs.flux_bootstrap }}" = "true" ]; then
+            echo "TF_VAR_flux_bootstrap_enabled=true" >> $GITHUB_ENV
+            echo "TF_VAR_flux_github_owner=${{ github.event.inputs.flux_owner }}" >> $GITHUB_ENV
+            echo "TF_VAR_flux_github_repository=${{ github.event.inputs.flux_repo }}" >> $GITHUB_ENV
+            echo "TF_VAR_flux_github_branch=${{ github.event.inputs.flux_branch }}" >> $GITHUB_ENV
+          fi
+
+      - name: Instalar flux CLI
+        run: |
+          curl -s https://fluxcd.io/install.sh | sudo bash
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform apply
+        env:
+          GITHUB_TOKEN: ${{ secrets.FLUX_GITHUB_TOKEN }}
+          SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+        run: terraform apply -auto-approve
+
+      - name: Publicar kubeconfig
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubeconfig
+          path: artifacts/kubeconfig
