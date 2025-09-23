@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n
+  labels:
+    app: n8n
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: n8n
+  template:
+    metadata:
+      labels:
+        app: n8n
+    spec:
+      containers:
+        - name: n8n
+          image: n8nio/n8n:1.109.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: N8N_PORT
+              value: "8080"
+            - name: N8N_PROTOCOL
+              value: "http"
+            - name: N8N_HOST
+              value: "localhost"
+            - name: GENERIC_TIMEZONE
+              value: "America/Lima"
+            - name: TZ
+              value: "America/Lima"
+            - name: N8N_ENCRYPTION_KEY
+              value: "development-only-not-secure"
+          ports:
+            - containerPort: 8080
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi

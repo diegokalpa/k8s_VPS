@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: n8n-config
+  labels:
+    app.kubernetes.io/name: n8n
+    app.kubernetes.io/component: runtime
+
+data:
+  DB_POSTGRESDB_DATABASE: "postgres"
+  DB_POSTGRESDB_PORT: "6543"
+  DB_POSTGRESDB_SCHEMA: "public"
+  DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED: "FALSE"
+  DB_TYPE: "postgresdb"
+  GENERIC_TIMEZONE: "America/Lima"
+  N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "TRUE"
+  N8N_PROTOCOL: "https"
+  N8N_RUNNERS_ENABLED: "TRUE"
+  N8N_PORT: "8080"
+  TZ: "America/Lima"
+  # Ajusta estos valores al dominio final antes del cutover
+  WEBHOOK_URL: "https://n8n.example.com"
+  N8N_HOST: "n8n.example.com"

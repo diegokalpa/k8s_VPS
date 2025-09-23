@@ -8,6 +8,9 @@ terraform/*.tfstate.*
 # Sensitive artifacts
 artifacts/*
 !artifacts/.gitkeep
+clusters/hostinger/n8n/secret.env
 
 # macOS
 .DS_Store
+
+docker/n8n/.env

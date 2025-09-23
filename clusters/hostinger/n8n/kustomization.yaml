@@ -1,0 +1,16 @@
+namespace: n8n
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+
+secretGenerator:
+  - name: n8n-secrets
+    envs:
+      - secret.env
+    options:
+      disableNameSuffixHash: true
