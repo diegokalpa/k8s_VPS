@@ -16,8 +16,8 @@ spec:
     spec:
       containers:
         - name: n8n
-          image: n8nio/n8n:1.109.1
-          imagePullPolicy: IfNotPresent
+          image: n8nio/n8n:latest
+          imagePullPolicy: Always
           env:
             - name: N8N_PORT
               value: "8080"
