@@ -96,6 +96,23 @@ Archivos sensibles ignorados por git:
   kubectl -n n8n rollout restart deploy/n8n && kubectl -n n8n rollout status deploy/n8n
   ```
 
+### Acceso rápido con script (recomendado)
+
+Para simplificar la conexión al clúster y abrir la UI de n8n con port-forward local en `http://localhost:8001`, usa el helper incluido:
+
+```bash
+scripts/dev-connect.sh              # establece port-forward a svc/n8n (8001->80)
+scripts/dev-connect.sh --open       # además abre el navegador (macOS)
+scripts/dev-connect.sh --ssh        # sólo abre sesión SSH al VPS
+
+# Opciones útiles
+scripts/dev-connect.sh --namespace n8n \
+  --kubeconfig artifacts/kubeconfig \
+  --ssh-user root --ssh-host 72.60.140.107 --ssh-port 22
+```
+
+El script valida el acceso al API del clúster, crea el namespace si hace falta y reintenta el port-forward en caso de error. 
+
 ## 5. Despliegue completo (con PVC/ConfigMap/Ingress)
 - Edita dominio en `clusters/hostinger/n8n/configmap.yaml` (N8N_HOST/WEBHOOK_URL) y `ingress.yaml`.
 - Crea `clusters/hostinger/n8n/secret.env` con tus credenciales (archivo está .gitignore). Para producción usa SOPS/SealedSecrets.
